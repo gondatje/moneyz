@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Money Canvas — Envelopes · Bills · Calendar (Prototype)</title>
+<style>
+  :root{
+    --bg:#f6f7f9;
+    --panel:#ffffff;
+    --ink:#111;
+    --muted:#5f6b7a;
+    --line:rgba(0,0,0,0.08);
+    --accent:#3b82f6;
+    --ok:#22c55e;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --radius:14px;
+    --gap:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";}
+  .app{
+    max-width:1300px; margin:24px auto; padding:0 16px; display:grid; grid-template-columns: 330px 1fr; gap:20px;
+  }
+  header.appbar{
+    grid-column: 1 / -1; background:var(--panel); border-radius:var(--radius); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 1px 3px rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.05);
+  }
+  header .left{display:flex; align-items:center; gap:10px}
+  header h1{font-size:16px; margin:0}
+  .btn{
+    appearance:none; border:1px solid var(--line); background:#111; color:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; font-weight:600;
+  }
+  .btn.ghost{background:transparent; color:var(--ink); border-color:var(--line)}
+  .btn.small{padding:6px 8px; font-size:12px}
+  .panel{background:var(--panel); border-radius:var(--radius); box-shadow:0 1px 3px rgba(0,0,0,.06), 0 10px 30px rgba(0,0,0,.05);}
+  .stack{display:flex; flex-direction:column; gap:var(--gap)}
+  .side{display:flex; flex-direction:column; gap:20px}
+  .section{padding:16px 16px 14px; border-bottom:1px solid var(--line)}
+  .section:last-child{border-bottom:none}
+  .section h3{margin:0 0 8px 0; font-size:13px; letter-spacing:.2px; text-transform:uppercase; color:var(--muted)}
+  .balance-row{display:flex; align-items:center; justify-content:space-between; gap:8px}
+  .balance-row .value{font-size:22px; font-weight:800}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:12px}
+  input, select{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink);
+  }
+  label{font-size:12px; color:var(--muted); display:block; margin-bottom:6px}
+  .row{display:flex; align-items:center; gap:10px}
+  .kpi{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .kpi .card{background:var(--panel); padding:14px; border-radius:12px; border:1px solid var(--line)}
+  .kpi .title{font-size:12px; color:var(--muted)}
+  .kpi .num{font-size:18px; font-weight:800}
+  /* Calendar */
+  .calendar{padding:16px}
+  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+  .cal-head .month{font-weight:800; font-size:16px}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:120px; gap:6px}
+  .dow{display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; color:var(--muted); font-size:12px}
+  .dow div{text-align:center}
+  .day{background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px; display:flex; flex-direction:column; gap:6px; overflow:hidden}
+  .day .date{font-size:12px; color:var(--muted)}
+  .pill{font-size:11px; border-radius:100px; padding:4px 8px; width:max-content; border:1px solid var(--line)}
+  .pill.due{background:#fff7ed; border-color:#fed7aa; color:#9a3412}
+  .pill.dedicated{background:#fffbeb; border-color:#fde68a; color:#92400e}
+  .pill.paid{background:#ecfdf5; border-color:#bbf7d0; color:#065f46}
+  .pill.deposit{background:#eef2ff; border-color:#c7d2fe; color:#3730a3}
+  /* Bills list */
+  .bills{padding:12px 12px 6px 12px}
+  .bill{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 8px; border-bottom:1px dashed var(--line);}
+  .bill:last-child{border-bottom:none}
+  .bill .left{display:flex; align-items:center; gap:10px}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .dot.red{background:var(--bad)} .dot.yellow{background:var(--warn)} .dot.green{background:var(--ok)}
+  .bill .name{font-weight:700}
+  .bill .meta{font-size:12px; color:var(--muted)}
+  .actions .btn{margin-left:6px}
+  /* Envelopes */
+  .envelopes{padding:12px}
+  .env{display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:8px; padding:10px 0; border-bottom:1px dashed var(--line)}
+  .env:last-child{border-bottom:none}
+  .bar{height:8px; border-radius:999px; background:linear-gradient(90deg, var(--accent), var(--ok));}
+  .bar-wrap{background:#f1f2f4; border-radius:999px; overflow:hidden; height:8px}
+  /* Debt visualizer */
+  .viz{padding:16px}
+  .stack-viz{display:flex; flex-direction:column; gap:8px}
+  .viz-row{display:grid; grid-template-columns:160px 1fr 80px; align-items:center; gap:10px}
+  .viz-row .label{font-size:13px; color:var(--muted)}
+  .viz-row .bar-wrap{height:10px}
+  .muted{color:var(--muted)}
+  /* Modal */
+  dialog{border:none; border-radius:16px; padding:0; width:min(660px, 92vw); box-shadow:0 20px 70px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(0,0,0,.35)}
+  .modal{padding:16px}
+  .modal .head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px}
+  .modal h3{margin:0}
+  .modal .foot{display:flex; justify-content:flex-end; gap:10px; margin-top:14px}
+  .mono{font-variant-numeric:tabular-nums}
+  @media (max-width:960px){
+    .app{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <div class="left">
+      <h1>Money Canvas — Envelopes · Bills · Calendar</h1>
+    </div>
+    <div class="row">
+      <button class="btn small" id="addBillBtn">+ Bill</button>
+      <button class="btn small" id="addDepositBtn">+ Deposit</button>
+      <button class="btn small" id="addEnvelopeBtn">+ Envelope</button>
+      <button class="btn small ghost" id="resetDemoBtn">Reset Demo</button>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <div class="side">
+    <div class="panel stack">
+      <div class="section">
+        <h3>Balances</h3>
+        <div class="balance-row"><div>Available (checking)</div><div class="value mono" id="available">$0.00</div></div>
+        <div class="balance-row"><div>Dedicated to Bills</div><div class="mono" id="dedicated">$0.00</div></div>
+      </div>
+      <div class="section">
+        <h3>Quick Deposit</h3>
+        <div class="grid-3">
+          <div>
+            <label>Type</label>
+            <select id="depType">
+              <option value="pay">Pay Deposit (auto-allocate)</option>
+              <option value="misc">Regular Deposit</option>
+            </select>
+          </div>
+          <div>
+            <label>Amount</label>
+            <input id="depAmt" type="number" min="0" step="0.01" placeholder="0.00"/>
+          </div>
+          <div>
+            <label>Date</label>
+            <input id="depDate" type="date"/>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px; justify-content:flex-end">
+          <button class="btn small" id="doDepositBtn">Add Deposit</button>
+        </div>
+        <div class="muted" style="margin-top:6px; font-size:12px">Pay deposits will auto-set aside <b>half</b> of each monthly bill (or bill's 'per paycheck' amount) and mark those dedicated funds on the calendar.</div>
+      </div>
+      <div class="section">
+        <h3>Key Settings</h3>
+        <div class="grid-2">
+          <div>
+            <label>Split bills per paycheck?</label>
+            <select id="splitMode">
+              <option value="half">Half of monthly</option>
+              <option value="perPaycheck">Use bill's per-paycheck field</option>
+            </select>
+          </div>
+          <div>
+            <label>Start Month</label>
+            <input id="startMonth" type="month"/>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>Envelopes</h3>
+        <div class="envelopes" id="envList"></div>
+        <div class="row" style="justify-content:flex-end; margin-top:6px">
+          <button class="btn small ghost" id="allocateLeftoverBtn">Allocate Leftover ➜ Envelopes</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section">
+        <h3>Debt Visualizer</h3>
+        <div class="viz">
+          <div class="stack-viz" id="debtViz"></div>
+          <div class="row" style="justify-content:space-between; margin-top:10px">
+            <div class="muted">Total Debt Remaining: <b id="totalDebt" class="mono">$0.00</b></div>
+            <button class="btn small ghost" id="recalcVizBtn">Recalculate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="panel">
+    <div class="calendar">
+      <div class="cal-head">
+        <div class="row">
+          <button class="btn small ghost" id="prevMonthBtn">◀</button>
+          <div class="month mono" id="monthLabel">Month YYYY</div>
+          <button class="btn small ghost" id="nextMonthBtn">▶</button>
+        </div>
+        <div class="row">
+          <button class="btn small ghost" id="todayBtn">Today</button>
+        </div>
+      </div>
+      <div class="dow">
+        <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="section">
+      <h3>Bills — List View</h3>
+      <div class="bills" id="billList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+<dialog id="billModal">
+  <div class="modal">
+    <div class="head">
+      <h3 id="billModalTitle">Bill</h3>
+      <button class="btn small ghost" onclick="closeBillModal()">Close</button>
+    </div>
+    <div id="billModalBody"></div>
+    <div class="foot">
+      <button class="btn small bad" id="deleteBillBtn" onclick="deleteBill()">Delete</button>
+      <button class="btn small" id="saveBillBtn">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="envelopeModal">
+  <div class="modal">
+    <div class="head">
+      <h3 id="envModalTitle">Envelope</h3>
+      <button class="btn small ghost" onclick="closeEnvelopeModal()">Close</button>
+    </div>
+    <div id="envModalBody"></div>
+    <div class="foot">
+      <button class="btn small" id="saveEnvBtn">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* -------------------- Data Model & Storage -------------------- */
+const storeKey = 'money-canvas-v1';
+const today = new Date();
+let state = {
+  monthCursor: new Date(today.getFullYear(), today.getMonth(), 1).toISOString(),
+  available: 0,
+  dedicated: 0,
+  envelopes: [
+    {id:id(), name:'Groceries', monthly:300, balance:0},
+    {id:id(), name:'Gas', monthly:200, balance:0},
+    {id:id(), name:'Entertainment', monthly:100, balance:0},
+    {id:id(), name:'Clothing', monthly:50, balance:0},
+  ],
+  bills: [
+    // recurring with no balance
+    {id:id(), name:'Phone', type:'recurring', monthly:160, perPaycheck:80, dueDay:15, color:'#2563eb',
+      balance:null, paidThisMonth:0, dedicatedThisMonth:0},
+    {id:id(), name:'Dad Transfer', type:'recurring', monthly:400, perPaycheck:200, dueDay:2, color:'#7c3aed',
+      balance:null, paidThisMonth:0, dedicatedThisMonth:0},
+    // debts with balance (also have a suggested monthly)
+    {id:id(), name:'Dignifi', type:'debt', monthly:120, perPaycheck:60, dueDay:5, color:'#ef4444',
+      balance:351.31, paidThisMonth:0, dedicatedThisMonth:0},
+    {id:id(), name:'Innings Festival', type:'debt', monthly:120, perPaycheck:60, dueDay:10, color:'#f59e0b',
+      balance:726.82, paidThisMonth:0, dedicatedThisMonth:0},
+    {id:id(), name:'Capital One', type:'debt', monthly:100, perPaycheck:50, dueDay:20, color:'#10b981',
+      balance:0, paidThisMonth:0, dedicatedThisMonth:0},
+  ],
+  deposits: [], // {id, type:'pay'|'misc', amount, date}
+  calendarMarks: [] // {id, date, kind:'deposit'|'dedicated'|'paid', billId, amount}
+};
+
+function id(){ return Math.random().toString(36).slice(2,9); }
+
+function save(){ localStorage.setItem(storeKey, JSON.stringify(state)); }
+function load(){
+  const raw = localStorage.getItem(storeKey);
+  if(raw){
+    try{ state = JSON.parse(raw); }
+    catch(e){ console.warn('load failed; using defaults') }
+  }
+}
+load();
+
+/* -------------------- Utilities -------------------- */
+const fmt = (n)=>'$' + (Number(n)||0).toFixed(2);
+function ymd(d){ return d.toISOString().slice(0,10); }
+function monthStart(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function daysInMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0).getDate(); }
+function setMonthCursor(y,m){
+  state.monthCursor = new Date(y,m,1).toISOString();
+  save(); render();
+}
+function currentMonth(){ const d = new Date(state.monthCursor); return new Date(d.getFullYear(), d.getMonth(), 1); }
+function colorDot(status){
+  if(status==='paid') return 'green';
+  if(status==='dedicated') return 'yellow';
+  return 'red';
+}
+
+/* -------------------- Rendering -------------------- */
+function render(){
+  // balances
+  document.getElementById('available').textContent = fmt(state.available);
+  document.getElementById('dedicated').textContent = fmt(state.dedicated);
+  // month label
+  const cur = currentMonth();
+  document.getElementById('monthLabel').textContent = cur.toLocaleString(undefined,{month:'long', year:'numeric'});
+  document.getElementById('startMonth').value = cur.toISOString().slice(0,7);
+  // calendar
+  renderCalendar();
+  // bills list
+  renderBills();
+  // envelopes
+  renderEnvelopes();
+  // debt viz
+  renderDebtViz();
+}
+function renderCalendar(){
+  const grid = document.getElementById('calGrid'); grid.innerHTML='';
+  const cur = currentMonth();
+  const firstDow = new Date(cur.getFullYear(), cur.getMonth(),1).getDay();
+  const dim = daysInMonth(cur);
+  const cells = 42; // 6x7
+  for(let i=0;i<cells;i++){
+    const dayNum = i - firstDow + 1;
+    const cell = document.createElement('div'); cell.className='day';
+    const label = document.createElement('div'); label.className='date';
+    if(dayNum>=1 && dayNum<=dim){
+      const date = new Date(cur.getFullYear(), cur.getMonth(), dayNum);
+      label.textContent = date.toLocaleDateString(undefined,{day:'numeric'});
+      const entries = getCalendarEntriesForDate(date);
+      // due bills
+      state.bills.forEach(b=>{
+        if(b.dueDay === dayNum){
+          const pill = document.createElement('div'); pill.className='pill due'; pill.textContent = `${b.name} due`;
+          cell.appendChild(pill);
+        }
+      });
+      // marks
+      entries.forEach(e=>{
+        const pill = document.createElement('div');
+        pill.className = 'pill ' + (e.kind==='deposit'?'deposit':(e.kind==='paid'?'paid':'dedicated'));
+        if(e.kind==='deposit'){ pill.textContent = `Deposit ${fmt(e.amount)}`; }
+        else{
+          const bill = state.bills.find(x=>x.id===e.billId);
+          pill.textContent = `${bill?bill.name:'Bill'} ${e.kind==='paid'?'paid':'dedicated'} ${fmt(e.amount)}`;
+        }
+        cell.appendChild(pill);
+      });
+    }else{
+      label.textContent = '';
+      cell.style.opacity = .35;
+    }
+    cell.prepend(label);
+    grid.appendChild(cell);
+  }
+}
+function getCalendarEntriesForDate(date){
+  const ymdStr = ymd(date);
+  return state.calendarMarks.filter(m=>m.date===ymdStr);
+}
+function renderBills(){
+  const list = document.getElementById('billList'); list.innerHTML='';
+  state.bills.forEach(b=>{
+    const row = document.createElement('div'); row.className='bill';
+    const left = document.createElement('div'); left.className='left';
+    const dot = document.createElement('div'); dot.className='dot ' + colorDot(b.paidThisMonth>0?'paid':(b.dedicatedThisMonth>0?'yellow':'red'));
+    left.appendChild(dot);
+    const name = document.createElement('div');
+    name.innerHTML = `<div class="name">${b.name}</div>
+      <div class="meta">Due ${String(b.dueDay).padStart(2,'0')} • ${b.type==='recurring' ? 'Recurring' : 'Debt'} • Monthly ${fmt(b.monthly)} ${b.balance!=null?(' • Balance '+fmt(b.balance)) : ''}</div>`;
+    left.appendChild(name);
+    const right = document.createElement('div'); right.className='actions';
+    const open = document.createElement('button'); open.className='btn small ghost'; open.textContent='Open';
+    open.onclick = ()=>openBillModal(b.id);
+    right.appendChild(open);
+    row.appendChild(left); row.appendChild(right);
+    list.appendChild(row);
+  });
+}
+function renderEnvelopes(){
+  const list = document.getElementById('envList'); list.innerHTML='';
+  state.envelopes.forEach(env=>{
+    const row = document.createElement('div'); row.className='env';
+    const col1 = document.createElement('div'); col1.innerHTML = `<div style="font-weight:700">${env.name}</div>
+      <div class="bar-wrap"><div class="bar" style="width:${Math.min(100, env.balance / Math.max(1, env.monthly) * 100)}%"></div></div>
+      <div class="muted mono" style="margin-top:6px">${fmt(env.balance)} / ${fmt(env.monthly)}</div>`;
+    const col2 = document.createElement('div'); col2.innerHTML = `<label>Monthly</label><input type="number" step="0.01" value="${env.monthly}" oninput="updateEnvMonthly('${env.id}', this.value)"/>`;
+    const col3 = document.createElement('div'); col3.innerHTML = `<label>Balance</label><input type="number" step="0.01" value="${env.balance}" oninput="updateEnvBalance('${env.id}', this.value)"/>`;
+    const col4 = document.createElement('div'); const btn = document.createElement('button'); btn.className='btn small ghost'; btn.textContent='Edit'; btn.onclick=()=>openEnvelopeModal(env.id); col4.appendChild(btn);
+    row.appendChild(col1); row.appendChild(col2); row.appendChild(col3); row.appendChild(col4);
+    list.appendChild(row);
+  });
+}
+function renderDebtViz(){
+  const wrap = document.getElementById('debtViz'); wrap.innerHTML='';
+  const debts = state.bills.filter(b=>b.type==='debt' && b.balance!=null && b.balance>0);
+  const total = debts.reduce((s,b)=>s+b.balance,0);
+  document.getElementById('totalDebt').textContent = fmt(total);
+  debts.forEach(d=>{
+    const row = document.createElement('div'); row.className='viz-row';
+    const lab = document.createElement('div'); lab.className='label'; lab.textContent = d.name;
+    const barw = document.createElement('div'); barw.className='bar-wrap';
+    const bar = document.createElement('div'); bar.className='bar'; bar.style.width = (total? (d.balance/total*100):0) + '%'; bar.style.background = d.color||'var(--accent)';
+    barw.appendChild(bar);
+    const val = document.createElement('div'); val.className='mono'; val.textContent = fmt(d.balance);
+    row.appendChild(lab); row.appendChild(barw); row.appendChild(val);
+    wrap.appendChild(row);
+  });
+}
+
+/* -------------------- Deposits & Allocation -------------------- */
+function addDeposit(type, amount, dateStr){
+  amount = Number(amount)||0; if(amount<=0) return;
+  state.deposits.push({id:id(), type, amount, date:dateStr});
+  state.available += amount;
+  if(type==='pay'){
+    autoAllocate(amount, dateStr);
+  }
+  save(); render();
+}
+function autoAllocate(amount, dateStr){
+  // Allocate half of each bill's monthly (or per-paycheck) until funds exhausted.
+  const splitMode = document.getElementById('splitMode').value;
+  let remaining = amount;
+  // pass 1: set aside dedicated funds
+  for(const b of state.bills){
+    const need = splitMode==='half' ? (b.monthly/2) : (b.perPaycheck||b.monthly/2);
+    const toSetAside = Math.max(0, need - b.dedicatedThisMonth);
+    if(toSetAside>0 && remaining>0){
+      const use = Math.min(toSetAside, remaining);
+      b.dedicatedThisMonth += use;
+      state.available -= use;
+      state.dedicated += use;
+      state.calendarMarks.push({id:id(), date:dateStr, kind:'dedicated', billId:b.id, amount:use});
+      remaining -= use;
+    }
+  }
+  // leftover stays available
+  save();
+}
+/* -------------------- Bill Modal -------------------- */
+let editingBillId = null;
+function openBillModal(id){
+  editingBillId = id;
+  const b = state.bills.find(x=>x.id===id);
+  if(!b) return;
+  document.getElementById('billModalTitle').textContent = b.name + ' — details';
+  const body = document.getElementById('billModalBody');
+  body.innerHTML = `
+    <div class="grid-2">
+      <div><label>Name</label><input id="bm_name" value="${b.name}"/></div>
+      <div><label>Type</label>
+        <select id="bm_type">
+          <option value="recurring" ${b.type==='recurring'?'selected':''}>Recurring</option>
+          <option value="debt" ${b.type==='debt'?'selected':''}>Debt (has balance)</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:8px">
+      <div><label>Monthly Amount</label><input id="bm_monthly" type="number" step="0.01" value="${b.monthly}"/></div>
+      <div><label>Per Paycheck</label><input id="bm_pp" type="number" step="0.01" value="${b.perPaycheck||''}" placeholder="auto calc if empty"/></div>
+      <div><label>Due Day</label><input id="bm_due" type="number" min="1" max="28" value="${b.dueDay}"/></div>
+    </div>
+    <div class="grid-3" style="margin-top:8px">
+      <div><label>Balance (debts)</label><input id="bm_bal" type="number" step="0.01" value="${b.balance!=null?b.balance:''}" placeholder="leave blank if N/A"/></div>
+      <div><label>Paid This Month</label><input id="bm_paid" type="number" step="0.01" value="${b.paidThisMonth}"/></div>
+      <div><label>Dedicated This Month</label><input id="bm_ded" type="number" step="0.01" value="${b.dedicatedThisMonth}"/></div>
+    </div>
+    <div class="grid-2" style="margin-top:8px">
+      <div><label>Color</label><input id="bm_color" type="color" value="${b.color||'#3b82f6'}"/></div>
+      <div></div>
+    </div>
+    <div style="margin-top:12px; padding:10px; border:1px solid var(--line); border-radius:10px">
+      <div class="row" style="justify-content:space-between; gap:10px">
+        <div class="muted">Actions</div>
+        <div class="row">
+          <button class="btn small ghost" onclick="applyPayment('${b.id}')">Mark Payment</button>
+          <button class="btn small ghost" onclick="applyOverpay('${b.id}')">Overpay Debt</button>
+          <button class="btn small ghost" onclick="zeroMonth('${b.id}')">Reset Month</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:6px; font-size:12px">Mark payment will move dedicated ➜ paid and reduce balance if applicable. Overpay will use available funds.</div>
+    </div>
+  `;
+  document.getElementById('saveBillBtn').onclick = saveBillModal;
+  document.getElementById('billModal').showModal();
+}
+function closeBillModal(){ document.getElementById('billModal').close(); }
+function saveBillModal(){
+  const b = state.bills.find(x=>x.id===editingBillId); if(!b) return;
+  b.name = document.getElementById('bm_name').value;
+  b.type = document.getElementById('bm_type').value;
+  b.monthly = Number(document.getElementById('bm_monthly').value)||0;
+  const pp = document.getElementById('bm_pp').value; b.perPaycheck = pp===''?null:(Number(pp)||0);
+  b.dueDay = Number(document.getElementById('bm_due').value)||1;
+  const balRaw = document.getElementById('bm_bal').value; b.balance = balRaw===''?null:(Number(balRaw)||0);
+  b.paidThisMonth = Number(document.getElementById('bm_paid').value)||0;
+  b.dedicatedThisMonth = Number(document.getElementById('bm_ded').value)||0;
+  b.color = document.getElementById('bm_color').value;
+  save(); render(); closeBillModal();
+}
+function deleteBill(){
+  state.bills = state.bills.filter(x=>x.id!==editingBillId);
+  save(); render(); closeBillModal();
+}
+function zeroMonth(billId){
+  const b = state.bills.find(x=>x.id===billId); if(!b) return;
+  state.available += b.dedicatedThisMonth; // release dedicated
+  state.dedicated -= b.dedicatedThisMonth;
+  b.dedicatedThisMonth = 0;
+  b.paidThisMonth = 0;
+  // remove marks for current month
+  const cur = currentMonth();
+  const start = ymd(new Date(cur.getFullYear(), cur.getMonth(),1));
+  const end = ymd(new Date(cur.getFullYear(), cur.getMonth()+1,0));
+  state.calendarMarks = state.calendarMarks.filter(m=>!(m.billId===billId && m.date>=start && m.date<=end));
+  save(); render(); openBillModal(billId);
+}
+function applyPayment(billId){
+  const b = state.bills.find(x=>x.id===billId); if(!b) return;
+  const amount = b.dedicatedThisMonth;
+  if(amount<=0){ alert('Nothing dedicated to move.'); return; }
+  b.paidThisMonth += amount;
+  if(b.balance!=null){ b.balance = Math.max(0, (b.balance - amount)); }
+  state.dedicated -= amount;
+  // mark calendar on due day as paid
+  const cur = currentMonth();
+  const dateStr = ymd(new Date(cur.getFullYear(), cur.getMonth(), b.dueDay));
+  state.calendarMarks.push({id:id(), date:dateStr, kind:'paid', billId:b.id, amount});
+  b.dedicatedThisMonth = 0;
+  save(); render(); openBillModal(billId);
+}
+function applyOverpay(billId){
+  const b = state.bills.find(x=>x.id===billId); if(!b) return;
+  if(b.balance==null){ alert('Overpay applies to debts with a balance.'); return; }
+  const max = Math.min(state.available, b.balance);
+  if(max<=0){ alert('No available funds to overpay.'); return; }
+  const amt = Number(prompt('Overpay amount (available '+fmt(max)+')', max.toFixed(2)));
+  if(!amt || amt<=0) return;
+  const use = Math.min(amt, state.available);
+  b.balance = Math.max(0, b.balance - use);
+  b.paidThisMonth += use;
+  state.available -= use;
+  const cur = currentMonth();
+  const dateStr = ymd(new Date(cur.getFullYear(), cur.getMonth(), b.dueDay));
+  state.calendarMarks.push({id:id(), date:dateStr, kind:'paid', billId:b.id, amount:use});
+  save(); render(); openBillModal(billId);
+}
+
+/* -------------------- Envelope Modal -------------------- */
+let editingEnvId = null;
+function openEnvelopeModal(id){
+  editingEnvId = id;
+  const e = state.envelopes.find(x=>x.id===id);
+  const body = document.getElementById('envModalBody');
+  body.innerHTML = `
+    <div class="grid-2">
+      <div><label>Name</label><input id="em_name" value="${e?e.name:''}"/></div>
+      <div><label>Monthly Budget</label><input id="em_monthly" type="number" step="0.01" value="${e?e.monthly:0}"/></div>
+    </div>
+    <div class="grid-2" style="margin-top:8px">
+      <div><label>Balance</label><input id="em_balance" type="number" step="0.01" value="${e?e.balance:0}"/></div>
+      <div></div>
+    </div>
+  `;
+  document.getElementById('saveEnvBtn').onclick = saveEnvelopeModal;
+  document.getElementById('envelopeModal').showModal();
+}
+function closeEnvelopeModal(){ document.getElementById('envelopeModal').close(); }
+function saveEnvelopeModal(){
+  if(editingEnvId){
+    const e = state.envelopes.find(x=>x.id===editingEnvId);
+    e.name = document.getElementById('em_name').value;
+    e.monthly = Number(document.getElementById('em_monthly').value)||0;
+    e.balance = Number(document.getElementById('em_balance').value)||0;
+  }else{
+    state.envelopes.push({
+      id:id(),
+      name: document.getElementById('em_name').value || 'Envelope',
+      monthly: Number(document.getElementById('em_monthly').value)||0,
+      balance: Number(document.getElementById('em_balance').value)||0
+    });
+  }
+  save(); render(); closeEnvelopeModal();
+}
+function updateEnvMonthly(idv, val){ const e = state.envelopes.find(x=>x.id===idv); e.monthly = Number(val)||0; save(); render(); }
+function updateEnvBalance(idv, val){ const e = state.envelopes.find(x=>x.id===idv); e.balance = Number(val)||0; save(); render(); }
+function allocateLeftover(){
+  // Distribute available funds proportionally to envelopes that are under their monthly target
+  let need = 0;
+  const deficits = state.envelopes.map(e=>({id:e.id, need: Math.max(0, e.monthly - e.balance)}));
+  deficits.forEach(d=>need+=d.need);
+  if(need<=0 || state.available<=0){ alert('Nothing to allocate.'); return; }
+  state.envelopes.forEach(e=>{
+    const d = Math.max(0, e.monthly - e.balance);
+    if(d>0){
+      const share = (d/need) * state.available;
+      e.balance += share;
+    }
+  });
+  state.available = 0;
+  save(); render();
+}
+
+/* -------------------- Adders -------------------- */
+function newBill(){
+  editingBillId = null;
+  const body = document.getElementById('billModalBody');
+  document.getElementById('billModalTitle').textContent = 'New Bill';
+  body.innerHTML = `
+    <div class="grid-2">
+      <div><label>Name</label><input id="bm_name" placeholder="Name"/></div>
+      <div><label>Type</label>
+        <select id="bm_type"><option value="recurring">Recurring</option><option value="debt">Debt (has balance)</option></select>
+      </div>
+    </div>
+    <div class="grid-3" style="margin-top:8px">
+      <div><label>Monthly Amount</label><input id="bm_monthly" type="number" step="0.01"/></div>
+      <div><label>Per Paycheck</label><input id="bm_pp" type="number" step="0.01" placeholder="auto calc if empty"/></div>
+      <div><label>Due Day</label><input id="bm_due" type="number" min="1" max="28" value="1"/></div>
+    </div>
+    <div class="grid-3" style="margin-top:8px">
+      <div><label>Balance (debts)</label><input id="bm_bal" type="number" step="0.01" placeholder="leave blank if N/A"/></div>
+      <div><label>Paid This Month</label><input id="bm_paid" type="number" step="0.01" value="0"/></div>
+      <div><label>Dedicated This Month</label><input id="bm_ded" type="number" step="0.01" value="0"/></div>
+    </div>
+    <div class="grid-2" style="margin-top:8px">
+      <div><label>Color</label><input id="bm_color" type="color" value="#3b82f6"/></div>
+      <div></div>
+    </div>
+  `;
+  document.getElementById('saveBillBtn').onclick = ()=>{
+    const name = document.getElementById('bm_name').value || 'Bill';
+    const type = document.getElementById('bm_type').value;
+    const monthly = Number(document.getElementById('bm_monthly').value)||0;
+    const ppRaw = document.getElementById('bm_pp').value; const perPaycheck = ppRaw===''?null:(Number(ppRaw)||0);
+    const due = Number(document.getElementById('bm_due').value)||1;
+    const balRaw = document.getElementById('bm_bal').value; const balance = balRaw===''?null:(Number(balRaw)||0);
+    const b = {id:id(), name, type, monthly, perPaycheck, dueDay:due, color:'#3b82f6', balance, paidThisMonth:0, dedicatedThisMonth:0};
+    state.bills.push(b); save(); render(); closeBillModal();
+  };
+  document.getElementById('billModal').showModal();
+}
+function newEnvelope(){
+  editingEnvId = null;
+  openEnvelopeModal(null);
+}
+
+/* -------------------- Calendar Navigation -------------------- */
+document.getElementById('prevMonthBtn').onclick = ()=>{
+  const c = currentMonth(); setMonthCursor(c.getFullYear(), c.getMonth()-1);
+};
+document.getElementById('nextMonthBtn').onclick = ()=>{
+  const c = currentMonth(); setMonthCursor(c.getFullYear(), c.getMonth()+1);
+};
+document.getElementById('todayBtn').onclick = ()=>{
+  const t = new Date(); setMonthCursor(t.getFullYear(), t.getMonth());
+};
+document.getElementById('startMonth').oninput = (e)=>{
+  const [y,m] = e.target.value.split('-').map(Number);
+  setMonthCursor(y, m-1);
+};
+
+/* -------------------- Buttons -------------------- */
+document.getElementById('addBillBtn').onclick = newBill;
+document.getElementById('addEnvelopeBtn').onclick = newEnvelope;
+document.getElementById('addDepositBtn').onclick = ()=>{
+  // open quick controls already in sidebar
+  document.getElementById('depAmt').focus();
+};
+document.getElementById('doDepositBtn').onclick = ()=>{
+  const t = document.getElementById('depType').value;
+  const a = Number(document.getElementById('depAmt').value||0);
+  const d = document.getElementById('depDate').value || ymd(new Date());
+  addDeposit(t,a,d);
+  document.getElementById('depAmt').value='';
+};
+document.getElementById('recalcVizBtn').onclick = renderDebtViz;
+document.getElementById('allocateLeftoverBtn').onclick = allocateLeftover;
+document.getElementById('splitMode').onchange = ()=>save();
+
+document.getElementById('resetDemoBtn').onclick = ()=>{
+  if(confirm('Reset demo data?')){ localStorage.removeItem(storeKey); location.reload(); }
+};
+
+/* -------------------- Init -------------------- */
+// default month date inputs
+document.getElementById('depDate').value = ymd(new Date());
+document.getElementById('startMonth').value = ymd(monthStart(new Date())).slice(0,7);
+render();
+</script>
+</body>
+</html>
