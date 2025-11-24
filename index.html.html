@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Money Cockpit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --bg-elevated: #ffffff;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border-subtle: #e5e7eb;
+      --danger: #ef4444;
+      --pay-green: #16a34a;
+      --bill-red: #ef4444;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background: radial-gradient(circle at top left, #e0ecff 0, #f3f4f6 40%, #f9fafb 100%);
+      color: var(--text-main);
+    }
+
+    .app-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .app-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill {
+      font-size: 0.75rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .btn {
+      border: none;
+      outline: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: #111827;
+      color: #f9fafb;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.3);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+
+    button.secondary {
+      background: rgba(15, 23, 42, 0.06);
+      color: var(--text-main);
+      box-shadow: none;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding-inline: 12px;
+    }
+
+    button.ghost {
+      background: transparent;
+      box-shadow: none;
+      color: var(--text-muted);
+      padding-inline: 0;
+    }
+
+    button:hover:not(.ghost) {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.4);
+      background: #020617;
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .card {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      backdrop-filter: blur(14px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .summary-card {
+      background: linear-gradient(145deg, #0f172a, #111827);
+      color: #f9fafb;
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .summary-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: radial-gradient(circle at top left, rgba(96, 165, 250, 0.22), transparent 58%);
+      opacity: 0.9;
+      pointer-events: none;
+    }
+
+    .summary-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      opacity: 0.75;
+    }
+
+    .summary-value {
+      font-size: 1.2rem;
+      font-weight: 600;
+      z-index: 1;
+    }
+
+    .summary-sub {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      z-index: 1;
+    }
+
+    .summary-bar {
+      position: relative;
+      margin-top: 4px;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.3);
+      overflow: hidden;
+    }
+
+    .summary-bar-fill {
+      position: absolute;
+      inset: 0;
+      width: 0%;
+      background: linear-gradient(90deg, #60a5fa, #22c55e);
+      transition: width 0.18s ease;
+    }
+
+    /* Calendar */
+    .calendar-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .month-label {
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .month-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      font-size: 0.75rem;
+    }
+
+    .weekday {
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      padding-bottom: 2px;
+    }
+
+    .day-cell {
+      height: 64px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(209, 213, 219, 0.8);
+      padding: 4px 5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+    }
+
+    .day-cell:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent-soft);
+    }
+
+    .day-cell.other-month {
+      opacity: 0.4;
+    }
+
+    .day-number {
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    .today-pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    .day-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+    }
+
+    .badge-pay {
+      background: var(--pay-green);
+    }
+
+    .badge-bill {
+      background: var(--bill-red);
+    }
+
+    .day-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4);
+    }
+
+    .day-cell.selected .day-number {
+      color: var(--accent);
+    }
+
+    .day-detail-list {
+      margin-top: 8px;
+      max-height: 210px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .day-detail-empty {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 12px 4px 6px;
+    }
+
+    .day-event-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 4px;
+      border-radius: 10px;
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      margin-bottom: 4px;
+      font-size: 0.8rem;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .event-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .event-label {
+      font-weight: 500;
+    }
+
+    .event-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+    }
+
+    .event-amount {
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+
+    /* Right-side panels */
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .inline-inputs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    input, select {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      background: rgba(248, 250, 252, 0.8);
+      outline: none;
+      min-width: 0;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+
+    .field-label {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+    }
+
+    .badge-small {
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.18);
+      color: var(--text-muted);
+    }
+
+    .bills-table, .paychecks-list, .categories-list {
+      margin-top: 6px;
+      max-height: 210px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .row-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(249, 250, 251, 0.95);
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+    }
+
+    .row-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .row-title {
+      font-weight: 500;
+    }
+
+    .row-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .row-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      border-radius: 999px;
+      width: 22px;
+      height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: rgba(241, 245, 249, 0.9);
+      cursor: pointer;
+      font-size: 0.75rem;
+      padding: 0;
+      color: var(--text-muted);
+      transition: background 0.12s ease, transform 0.08s ease;
+    }
+
+    .icon-btn:hover {
+      background: rgba(229, 231, 235, 1);
+      transform: translateY(-0.5px);
+    }
+
+    .icon-btn.danger {
+      background: rgba(254, 242, 242, 0.98);
+      color: var(--danger);
+    }
+
+    .icon-btn.danger:hover {
+      background: rgba(254, 226, 226, 1);
+    }
+
+    .pill-amount {
+      font-weight: 600;
+    }
+
+    .pill-tag {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--accent);
+    }
+
+    .danger-tag {
+      background: rgba(239, 68, 68, 0.08);
+      color: var(--danger);
+    }
+
+    .muted {
+      color: var(--text-muted);
+      font-size: 0.76rem;
+    }
+
+    /* Snapshot modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+    }
+
+    .modal-backdrop.show {
+      display: flex;
+    }
+
+    .modal {
+      max-width: 640px;
+      width: 100%;
+      background: var(--bg-elevated);
+      border-radius: 24px;
+      padding: 18px 20px 16px;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .modal-section {
+      margin-bottom: 10px;
+    }
+
+    .modal-section-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .code-block {
+      background: #020617;
+      color: #e5e7eb;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.75rem;
+      overflow-x: auto;
+      border: 1px solid rgba(15, 23, 42, 0.8);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="app-title">
+        Money Cockpit
+        <span class="pill">v1 • Local</span>
+      </div>
+      <div class="toolbar">
+        <input type="file" id="importFile" accept="application/json" style="display:none" />
+        <button class="secondary" id="importBtn">Import Snapshot</button>
+        <button class="secondary" id="exportBtn">Export Snapshot</button>
+        <button class="secondary" id="viewSnapshotBtn">View Snapshot</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Available This Cycle</div>
+          <div class="summary-value" id="summaryAvailable">$0</div>
+          <div class="summary-sub" id="summaryAvailableSub">After bills & envelopes</div>
+          <div class="summary-bar">
+            <div class="summary-bar-fill" id="barAvailable"></div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Bills Coverage</div>
+          <div class="summary-value" id="summaryBills">0%</div>
+          <div class="summary-sub" id="summaryBillsSub">Allocated vs due this month</div>
+          <div class="summary-bar">
+            <div class="summary-bar-fill" id="barBills"></div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Envelopes Funded</div>
+          <div class="summary-value" id="summaryEnvelopes">$0</div>
+          <div class="summary-sub" id="summaryEnvelopesSub">Across all categories</div>
+          <div class="summary-bar">
+            <div class="summary-bar-fill" id="barEnvelopes"></div>
+          </div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Month Ahead</div>
+          <div class="summary-value" id="summaryAhead">0%</div>
+          <div class="summary-sub" id="summaryAheadSub">Towards one month of bills</div>
+          <div class="summary-bar">
+            <div class="summary-bar-fill" id="barAhead"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <main>
+      <!-- Left: Calendar + Day details -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Calendar</div>
+            <div class="muted">Hybrid month view with daily breakdown</div>
+          </div>
+          <div class="card-actions">
+            <button class="ghost" id="todayBtn">Today</button>
+          </div>
+        </div>
+
+        <div class="calendar-wrap">
+          <div class="calendar-header">
+            <div class="month-label">
+              <span id="monthLabel">Month YYYY</span>
+              <span class="month-sub" id="monthSub"></span>
+            </div>
+            <div class="card-actions">
+              <button class="icon-btn" id="prevMonthBtn" title="Previous month">‹</button>
+              <button class="icon-btn" id="nextMonthBtn" title="Next month">›</button>
+            </div>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+
+          <div class="day-detail-list" id="dayDetailList"></div>
+        </div>
+      </section>
+
+      <!-- Right side: Paychecks + Bills + Categories -->
+      <section class="stack">
+        <!-- Paycheck settings & upcoming paychecks -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Pay</div>
+              <div class="muted">Biweekly • every other Friday</div>
+            </div>
+          </div>
+          <div class="inline-inputs">
+            <div>
+              <div class="field-label">Pay schedule</div>
+              <span class="badge-small">Every other Friday</span>
+              <input type="hidden" id="anchorPayDateInput" />
+            </div>
+            <button class="icon-btn pay-add-btn" id="payAddBtn" title="Add pay">
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <circle cx="9" cy="9" r="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M9 5.2v7.6M5.2 9h7.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="pay-form" id="payForm" style="display:none; margin-top:6px;">
+            <div class="inline-inputs">
+              <select id="payTypeInput">
+                <option value="paycheck">Paycheck</option>
+                <option value="other">Other</option>
+              </select>
+              <select id="payDaySelect"></select>
+              <input type="date" id="payDateInput" />
+              <input type="number" id="payAmountInput" min="0" step="0.01" placeholder="Amount" />
+              <button class="secondary" id="payCancelBtn">Cancel</button>
+              <button class="secondary" id="paySaveBtn">Save</button>
+            </div>
+            <div class="field-label" id="payFormHint" style="margin-top:4px;">
+              Choose the type of income, date, and amount.
+            </div>
+          </div>
+          <div class="bills-table" id="payEventsList"></div>
+          <div style="display:none;">
+            <input type="number" id="paycheckAmountInput" />
+            <div id="paychecksList"></div>
+          </div>
+        </div>
+
+        <!-- Bills panel -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Bills</div>
+              <div class="muted">Amount + due day of month</div>
+            </div>
+          </div>
+          <div class="inline-inputs">
+            <input type="text" id="billNameInput" placeholder="Name (Rent, Car, etc.)" />
+            <input type="number" id="billAmountInput" min="0" step="0.01" placeholder="Amount" />
+            <input type="number" id="billDueDayInput" min="1" max="31" placeholder="Due day" />
+            <button class="secondary" id="addBillBtn">Add</button>
+          </div>
+          <div class="bills-table" id="billsTable"></div>
+        </div>
+
+        <!-- Categories panel -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Envelopes</div>
+              <div class="muted">Dynamic categories you can shape anytime</div>
+            </div>
+          </div>
+          <div class="inline-inputs">
+            <input type="text" id="catNameInput" placeholder="Category (Food, Gas, Fun...)" />
+            <input type="number" id="catBalanceInput" min="0" step="0.01" placeholder="Current $" />
+            <input type="number" id="catTargetInput" min="0" step="0.01" placeholder="Target (opt.)" />
+            <button class="secondary" id="addCatBtn">Add</button>
+          </div>
+          <div class="categories-list" id="categoriesList"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Snapshot modal -->
+  <div class="modal-backdrop" id="snapshotModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Snapshot Overview</div>
+        <button class="icon-btn" id="closeSnapshotBtn">✕</button>
+      </div>
+      <div class="modal-body" id="snapshotBody"></div>
+      <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+        <button class="secondary" id="downloadSnapshotBtn">Download JSON</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- Utility ----------
+    function formatCurrency(value, currency = "USD") {
+      const n = Number(value || 0);
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 2
+      }).format(n);
+    }
+
+    function createId(prefix) {
+      return prefix + "_" + Math.random().toString(36).slice(2, 10) + "_" + Date.now().toString(36);
+    }
+
+    function startOfDay(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function isSameDay(a, b) {
+      const da = startOfDay(a);
+      const db = startOfDay(b);
+      return da.getTime() === db.getTime();
+    }
+
+    function getMonthMatrix(year, month) {
+      // Returns an array of 42 Date objects (6 weeks x 7 days)
+      const firstDay = new Date(year, month, 1);
+      const startWeekday = firstDay.getDay(); // 0 Sun - 6 Sat
+      const matrix = [];
+      // start from Sunday before (or same as) firstDay
+      const startDate = new Date(year, month, 1 - startWeekday);
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        matrix.push(d);
+      }
+      return matrix;
+    }
+
+    function addDays(date, days) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + days);
+      return d;
+    }
+
+    function dateToISO(date) {
+      return startOfDay(date).toISOString().slice(0, 10);
+    }
+
+    function parseISODateLocal(iso) {
+      if (!iso) return new Date();
+      const [y, m, d] = iso.split("-").map(Number);
+      return new Date(y, (m || 1) - 1, d || 1);
+    }
+
+    function getPayOverride(iso) {
+      if (!appState.profile) return null;
+      const map = appState.profile.payOverrides || {};
+      return map[iso] || null;
+    }
+
+    function ensurePayOverride(iso) {
+      if (!appState.profile) return null;
+      if (!appState.profile.payOverrides) appState.profile.payOverrides = {};
+      if (!appState.profile.payOverrides[iso]) {
+        appState.profile.payOverrides[iso] = {
+          amount: appState.profile.typicalNet || 0,
+          extra: 0
+        };
+      }
+      return appState.profile.payOverrides[iso];
+    }
+
+    function getPayAmountForDateISO(iso) {
+      const override = getPayOverride(iso);
+      if (override && typeof override.amount === "number") return override.amount;
+      return appState.profile.typicalNet || 0;
+    }
+
+    function getExtraForDateISO(iso) {
+      const override = getPayOverride(iso);
+      if (override && typeof override.extra === "number") return override.extra;
+      return 0;
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    // ---------- State ----------
+    const FIXED_ANCHOR_DATE = "2025-11-28";
+    const defaultState = {
+      version: 1,
+      profile: {
+        currency: "USD",
+        payFrequency: "biweekly",
+        anchorPayDate: FIXED_ANCHOR_DATE,
+        typicalNet: 0,
+        payOverrides: {}
+      },
+      accounts: [
+        { id: createId("acct"), name: "Checking", balance: 0 },
+        { id: createId("acct"), name: "Savings", balance: 0 }
+      ],
+      bills: [],
+      categories: [
+        { id: createId("cat"), name: "Groceries", balance: 0, target: 400 },
+        { id: createId("cat"), name: "Gas", balance: 0, target: 200 }
+      ],
+      debts: [],
+      payEvents: []
+    };
+
+    let appState = JSON.parse(JSON.stringify(defaultState));
+    let currentMonth = new Date();
+    currentMonth.setDate(1);
+    let selectedDay = new Date();
+
+    // ---------- Paydays & allocations ----------
+    function getPaydaysAround(anchorISO, monthsAhead = 3) {
+      const paydays = [];
+      if (!anchorISO) return paydays;
+      const anchor = startOfDay(parseISODateLocal(anchorISO));
+      const end = new Date(anchor);
+      end.setMonth(end.getMonth() + monthsAhead);
+      // go backwards a bit and forwards
+      const start = new Date(anchor);
+      start.setMonth(start.getMonth() - 1);
+
+      // find first payday <= start
+      let cursor = new Date(anchor);
+      while (cursor > start) {
+        cursor = addDays(cursor, -14);
+      }
+      // now move forward collecting up to end
+      while (cursor <= end) {
+        paydays.push(startOfDay(cursor));
+        cursor = addDays(cursor, 14);
+      }
+      return paydays;
+    }
+
+    function computeBillAllocations(paydays, monthsAhead = 3) {
+      const allocations = {}; // key: payday ISO -> { amountTotal, bills: [] }
+      if (!paydays.length) return allocations;
+
+      const now = new Date();
+      const end = new Date(now);
+      end.setMonth(end.getMonth() + monthsAhead);
+
+      // Pre-fill structure
+      for (const p of paydays) {
+        const iso = dateToISO(p);
+        allocations[iso] = { payday: p, amountTotal: 0, items: [] };
+      }
+
+      for (let monthOffset = 0; monthOffset <= monthsAhead; monthOffset++) {
+        const base = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+        const year = base.getFullYear();
+        const month = base.getMonth();
+
+        for (const bill of appState.bills) {
+          const dueDay = clamp(bill.dueDay || 1, 1, 28); // keep it sane
+          const dueDate = new Date(year, month, dueDay);
+          if (dueDate < now || dueDate > end) continue;
+
+          // find closest payday <= dueDate
+          let j = -1;
+          for (let i = 0; i < paydays.length; i++) {
+            if (paydays[i] <= dueDate) j = i;
+          }
+          if (j <= 0) continue;
+          const prevPayday = paydays[j - 1];
+          const thisPayday = paydays[j];
+
+          const half = (bill.amount || 0) / 2;
+
+          const prevIso = dateToISO(prevPayday);
+          const thisIso = dateToISO(thisPayday);
+
+          if (allocations[prevIso]) {
+            allocations[prevIso].amountTotal += half;
+            allocations[prevIso].items.push({
+              billId: bill.id,
+              billName: bill.name,
+              dueDate,
+              amount: half
+            });
+          }
+
+          if (allocations[thisIso]) {
+            allocations[thisIso].amountTotal += half;
+            allocations[thisIso].items.push({
+              billId: bill.id,
+              billName: bill.name,
+              dueDate,
+              amount: half
+            });
+          }
+        }
+      }
+      return allocations;
+    }
+
+    // ---------- Render: Calendar ----------
+    const calendarGridEl = document.getElementById("calendarGrid");
+    const monthLabelEl = document.getElementById("monthLabel");
+    const monthSubEl = document.getElementById("monthSub");
+    const dayDetailListEl = document.getElementById("dayDetailList");
+
+    function renderCalendar() {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+      const matrix = getMonthMatrix(year, month);
+
+      monthLabelEl.textContent = currentMonth.toLocaleString("default", {
+        month: "long",
+        year: "numeric"
+      });
+      monthSubEl.textContent = "Tap a day to see paychecks & bills";
+
+      calendarGridEl.innerHTML = "";
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      for (const w of weekdays) {
+        const el = document.createElement("div");
+        el.className = "weekday";
+        el.textContent = w;
+        calendarGridEl.appendChild(el);
+      }
+
+      const anchorISO = appState.profile.anchorPayDate;
+      const paydays = getPaydaysAround(anchorISO);
+      const paydayIsoSet = new Set(paydays.map(dateToISO));
+
+      const billDatesSet = new Set();
+      // Mark bill due dates in current month only
+      for (const bill of appState.bills) {
+        const dueDay = clamp(bill.dueDay || 1, 1, 31);
+        const dueDate = new Date(year, month, dueDay);
+        billDatesSet.add(dateToISO(dueDate));
+      }
+
+      for (const day of matrix) {
+        const cell = document.createElement("div");
+        cell.className = "day-cell";
+
+        if (day.getMonth() !== month) {
+          cell.classList.add("other-month");
+        }
+        if (isSameDay(day, selectedDay)) {
+          cell.classList.add("selected");
+        }
+
+        const top = document.createElement("div");
+        top.style.display = "flex";
+        top.style.justifyContent = "space-between";
+        top.style.alignItems = "center";
+
+        const numberSpan = document.createElement("span");
+        numberSpan.className = "day-number";
+        numberSpan.textContent = day.getDate();
+
+        top.appendChild(numberSpan);
+
+        if (isSameDay(day, new Date())) {
+          const todayBadge = document.createElement("span");
+          todayBadge.className = "today-pill";
+          todayBadge.textContent = "Today";
+          top.appendChild(todayBadge);
+        }
+
+        const badges = document.createElement("div");
+        badges.className = "day-badges";
+        const iso = dateToISO(day);
+
+        if (paydayIsoSet.has(iso)) {
+          const dot = document.createElement("div");
+          dot.className = "badge-dot badge-pay";
+          dot.title = "Payday";
+          badges.appendChild(dot);
+        }
+
+        if (billDatesSet.has(iso)) {
+          const dot = document.createElement("div");
+          dot.className = "badge-dot badge-bill";
+          dot.title = "Bill(s) due";
+          badges.appendChild(dot);
+        }
+
+        cell.appendChild(top);
+        cell.appendChild(badges);
+
+        cell.addEventListener("click", () => {
+          selectedDay = day;
+          renderCalendar();
+          renderDayDetails();
+        });
+
+        calendarGridEl.appendChild(cell);
+      }
+
+      renderDayDetails();
+    }
+
+    function renderDayDetails() {
+      dayDetailListEl.innerHTML = "";
+      const day = selectedDay;
+      const iso = dateToISO(day);
+
+      const anchorISO = appState.profile.anchorPayDate;
+      const paydays = getPaydaysAround(anchorISO);
+      const allocations = computeBillAllocations(paydays);
+
+      const hasPayday = paydays.some(p => isSameDay(p, day));
+
+      const year = day.getFullYear();
+      const month = day.getMonth();
+
+      const todaysBills = appState.bills.filter(b => {
+        const dueDay = clamp(b.dueDay || 1, 1, 31);
+        const dueDate = new Date(year, month, dueDay);
+        return isSameDay(dueDate, day);
+      });
+
+      const events = [];
+
+      // Pay events logged for this day
+      const payEvents = (appState.payEvents || []).filter(ev => ev.date === iso);
+      for (const ev of payEvents) {
+        events.push({
+          type: ev.type === "paycheck" ? "paycheck" : "other",
+          label: ev.type === "paycheck" ? "Paycheck" : "Other income",
+          amount: ev.amount || 0,
+          sub: ev.type === "paycheck" ? "Logged paycheck" : "Logged other income"
+        });
+      }
+
+      // Bill allocations associated with this payday
+      if (hasPayday) {
+        const alloc = allocations[iso];
+        if (alloc && alloc.items.length) {
+          for (const item of alloc.items) {
+            events.push({
+              type: "allocation",
+              label: item.billName,
+              amount: item.amount,
+              sub: "Allocation towards bill due " + item.dueDate.toLocaleDateString()
+            });
+          }
+        }
+      }
+
+      // Bills due today
+      for (const bill of todaysBills) {
+        events.push({
+          type: "bill",
+          label: bill.name,
+          amount: bill.amount,
+          sub: "Bill due today"
+        });
+      }
+
+      if (!events.length) {
+        const empty = document.createElement("div");
+        empty.className = "day-detail-empty";
+        empty.textContent = "Nothing scheduled for this day yet.";
+        dayDetailListEl.appendChild(empty);
+        return;
+      }
+
+      for (const event of events) {
+        const row = document.createElement("div");
+        row.className = "day-event-row";
+
+        const main = document.createElement("div");
+        main.className = "event-main";
+
+        const label = document.createElement("div");
+        label.className = "event-label";
+        label.textContent = event.label;
+        main.appendChild(label);
+
+        const tag = document.createElement("div");
+        tag.className = "event-tag";
+        tag.textContent =
+          event.type === "paycheck"
+            ? "Paycheck"
+            : event.type === "other"
+            ? "Other income"
+            : event.type === "bill"
+            ? "Bill due"
+            : "Allocation";
+        main.appendChild(tag);
+
+        if (event.sub) {
+          const sub = document.createElement("div");
+          sub.className = "row-sub";
+          sub.textContent = event.sub;
+          main.appendChild(sub);
+        }
+
+        const amount = document.createElement("div");
+        amount.className = "event-amount";
+        amount.textContent = formatCurrency(event.amount, appState.profile.currency);
+
+        row.appendChild(main);
+        row.appendChild(amount);
+
+        dayDetailListEl.appendChild(row);
+      }
+    }
+
+    // ---------- Render: Bills ----------
+    const billsTableEl = document.getElementById("billsTable");
+    const billNameInput = document.getElementById("billNameInput");
+    const billAmountInput = document.getElementById("billAmountInput");
+    const billDueDayInput = document.getElementById("billDueDayInput");
+    const addBillBtn = document.getElementById("addBillBtn");
+
+    function renderBills() {
+      billsTableEl.innerHTML = "";
+      if (!appState.bills.length) {
+        const div = document.createElement("div");
+        div.className = "muted";
+        div.textContent = "No bills yet. Add your first fixed bill above.";
+        billsTableEl.appendChild(div);
+        return;
+      }
+
+      const sorted = [...appState.bills].sort((a, b) => (a.dueDay || 1) - (b.dueDay || 1));
+
+      for (const bill of sorted) {
+        const row = document.createElement("div");
+        row.className = "row-pill";
+
+        const main = document.createElement("div");
+        main.className = "row-main";
+
+        const title = document.createElement("div");
+        title.className = "row-title";
+        title.textContent = bill.name;
+        main.appendChild(title);
+
+        const sub = document.createElement("div");
+        sub.className = "row-sub";
+        sub.textContent = `Due day: ${bill.dueDay || "?"}`;
+        main.appendChild(sub);
+
+        const right = document.createElement("div");
+        right.className = "row-right";
+
+        const amt = document.createElement("div");
+        amt.className = "pill-amount";
+        amt.textContent = formatCurrency(bill.amount, appState.profile.currency);
+        right.appendChild(amt);
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "icon-btn";
+        editBtn.textContent = "✎";
+        editBtn.title = "Edit";
+        editBtn.addEventListener("click", () => {
+          const newName = prompt("Bill name:", bill.name) ?? bill.name;
+          const newAmt = parseFloat(prompt("Amount:", bill.amount) ?? bill.amount);
+          const newDay = parseInt(prompt("Due day of month (1–31):", bill.dueDay) ?? bill.dueDay, 10);
+          if (!newName || isNaN(newAmt) || isNaN(newDay)) return;
+          bill.name = newName;
+          bill.amount = Math.max(0, newAmt);
+          bill.dueDay = clamp(newDay, 1, 31);
+          renderAll();
+        });
+        right.appendChild(editBtn);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "icon-btn danger";
+        delBtn.textContent = "✕";
+        delBtn.title = "Remove";
+        delBtn.addEventListener("click", () => {
+          if (!confirm("Remove this bill?")) return;
+          appState.bills = appState.bills.filter(b => b.id !== bill.id);
+          renderAll();
+        });
+        right.appendChild(delBtn);
+
+        row.appendChild(main);
+        row.appendChild(right);
+        billsTableEl.appendChild(row);
+      }
+    }
+
+    addBillBtn.addEventListener("click", () => {
+      const name = billNameInput.value.trim();
+      const amount = parseFloat(billAmountInput.value || "0");
+      const dueDay = parseInt(billDueDayInput.value || "1", 10);
+      if (!name || isNaN(amount) || isNaN(dueDay)) {
+        alert("Please provide name, amount, and due day.");
+        return;
+      }
+      appState.bills.push({
+        id: createId("bill"),
+        name,
+        amount: Math.max(0, amount),
+        dueDay: clamp(dueDay, 1, 31),
+        notes: ""
+      });
+      billNameInput.value = "";
+      billAmountInput.value = "";
+      billDueDayInput.value = "";
+      renderAll();
+    });
+
+    // ---------- Render: Categories ----------
+    const categoriesListEl = document.getElementById("categoriesList");
+    const catNameInput = document.getElementById("catNameInput");
+    const catBalanceInput = document.getElementById("catBalanceInput");
+    const catTargetInput = document.getElementById("catTargetInput");
+    const addCatBtn = document.getElementById("addCatBtn");
+
+    function renderCategories() {
+      categoriesListEl.innerHTML = "";
+      if (!appState.categories.length) {
+        const div = document.createElement("div");
+        div.className = "muted";
+        div.textContent = "Add envelopes for things like Food, Gas, Fun, etc.";
+        categoriesListEl.appendChild(div);
+        return;
+      }
+
+      for (const cat of appState.categories) {
+        const row = document.createElement("div");
+        row.className = "row-pill";
+
+        const main = document.createElement("div");
+        main.className = "row-main";
+
+        const title = document.createElement("div");
+        title.className = "row-title";
+        title.textContent = cat.name;
+        main.appendChild(title);
+
+        const sub = document.createElement("div");
+        sub.className = "row-sub";
+        if (cat.target && cat.target > 0) {
+          const pct = clamp((cat.balance || 0) / cat.target * 100, 0, 9999);
+          sub.textContent = `${formatCurrency(cat.balance)} of ${formatCurrency(cat.target)} (${pct.toFixed(0)}%)`;
+        } else {
+          sub.textContent = formatCurrency(cat.balance) + " funded";
+        }
+        main.appendChild(sub);
+
+        const right = document.createElement("div");
+        right.className = "row-right";
+
+        const tag = document.createElement("span");
+        tag.className = "pill-tag";
+        tag.textContent = "Envelope";
+        right.appendChild(tag);
+
+        const editBtn = document.createElement("button");
+        editBtn.className = "icon-btn";
+        editBtn.textContent = "✎";
+        editBtn.title = "Edit";
+        editBtn.addEventListener("click", () => {
+          const newName = prompt("Category name:", cat.name) ?? cat.name;
+          const newBalance = parseFloat(prompt("Current balance:", cat.balance) ?? cat.balance);
+          const newTarget = parseFloat(prompt("Target (optional):", cat.target ?? 0) ?? (cat.target ?? 0));
+          if (!newName || isNaN(newBalance)) return;
+          cat.name = newName;
+          cat.balance = Math.max(0, newBalance);
+          cat.target = isNaN(newTarget) ? 0 : Math.max(0, newTarget);
+          renderAll();
+        });
+        right.appendChild(editBtn);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "icon-btn danger";
+        delBtn.textContent = "✕";
+        delBtn.title = "Remove";
+        delBtn.addEventListener("click", () => {
+          if (!confirm("Remove this category?")) return;
+          appState.categories = appState.categories.filter(c => c.id !== cat.id);
+          renderAll();
+        });
+        right.appendChild(delBtn);
+
+        row.appendChild(main);
+        row.appendChild(right);
+        categoriesListEl.appendChild(row);
+      }
+    }
+
+    addCatBtn.addEventListener("click", () => {
+      const name = catNameInput.value.trim();
+      const balance = parseFloat(catBalanceInput.value || "0");
+      const target = parseFloat(catTargetInput.value || "0");
+      if (!name) {
+        alert("Category needs a name.");
+        return;
+      }
+      appState.categories.push({
+        id: createId("cat"),
+        name,
+        balance: isNaN(balance) ? 0 : Math.max(0, balance),
+        target: isNaN(target) ? 0 : Math.max(0, target)
+      });
+      catNameInput.value = "";
+      catBalanceInput.value = "";
+      catTargetInput.value = "";
+      renderAll();
+    });
+
+    // ---------- Render: Paychecks ----------
+    const anchorPayDateInput = document.getElementById("anchorPayDateInput");
+    const paycheckAmountInput = document.getElementById("paycheckAmountInput");
+    const paychecksListEl = document.getElementById("paychecksList");
+    const payAddBtn = document.getElementById("payAddBtn");
+    const payFormEl = document.getElementById("payForm");
+    const payTypeInput = document.getElementById("payTypeInput");
+    const payDaySelect = document.getElementById("payDaySelect");
+    const payDateInput = document.getElementById("payDateInput");
+    const payAmountInput = document.getElementById("payAmountInput");
+    const payCancelBtn = document.getElementById("payCancelBtn");
+    const paySaveBtn = document.getElementById("paySaveBtn");
+    const payEventsListEl = document.getElementById("payEventsList");
+
+    function renderPaychecks() {
+      appState.profile.anchorPayDate = FIXED_ANCHOR_DATE;
+      anchorPayDateInput.value = FIXED_ANCHOR_DATE;
+    }
+
+    function renderPayEvents() {
+      payEventsListEl.innerHTML = "";
+      const list = appState.payEvents || [];
+      if (!list.length) {
+        const div = document.createElement("div");
+        div.className = "muted";
+        div.textContent = "No pay logged yet. Tap + to add income.";
+        payEventsListEl.appendChild(div);
+        return;
+      }
+      const sorted = [...list].sort((a, b) => {
+        const da = parseISODateLocal(a.date || "");
+        const db = parseISODateLocal(b.date || "");
+        return db - da;
+      });
+      for (const ev of sorted) {
+        const row = document.createElement("div");
+        row.className = "row-pill";
+
+        const main = document.createElement("div");
+        main.className = "row-main";
+
+        const title = document.createElement("div");
+        title.className = "row-title";
+        title.textContent = ev.type === "paycheck" ? "Paycheck" : "Other income";
+        main.appendChild(title);
+
+        const sub = document.createElement("div");
+        sub.className = "row-sub";
+        const d = ev.date ? parseISODateLocal(ev.date) : null;
+        sub.textContent = d ? d.toLocaleDateString() : "No date";
+        main.appendChild(sub);
+
+        const right = document.createElement("div");
+        right.className = "row-right";
+
+        const amt = document.createElement("div");
+        amt.className = "pill-amount";
+        amt.textContent = formatCurrency(ev.amount || 0, appState.profile.currency);
+        right.appendChild(amt);
+
+        const delBtn = document.createElement("button");
+        delBtn.className = "icon-btn danger";
+        delBtn.textContent = "✕";
+        delBtn.title = "Remove";
+        delBtn.addEventListener("click", () => {
+          if (!confirm("Remove this income entry?")) return;
+          appState.payEvents = (appState.payEvents || []).filter(x => x !== ev);
+          renderAll();
+        });
+        right.appendChild(delBtn);
+
+        row.appendChild(main);
+        row.appendChild(right);
+        payEventsListEl.appendChild(row);
+      }
+    }
+
+    anchorPayDateInput.addEventListener("change", () => {
+      const val = anchorPayDateInput.value;
+      if (!val) return;
+      appState.profile.anchorPayDate = val;
+      renderAll();
+    });
+
+    if (payAddBtn) {
+      const updatePayFormVisibility = () => {
+        const type = payTypeInput.value;
+        if (type === "paycheck") {
+          payDaySelect.style.display = "";
+          payDateInput.style.display = "none";
+          // populate paydays
+          const paydays = getPaydaysAround(appState.profile.anchorPayDate, 3);
+          payDaySelect.innerHTML = "";
+          for (const p of paydays) {
+            const iso = dateToISO(p);
+            const opt = document.createElement("option");
+            opt.value = iso;
+            opt.textContent = p.toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric"
+            });
+            payDaySelect.appendChild(opt);
+          }
+        } else {
+          payDaySelect.style.display = "none";
+          payDateInput.style.display = "";
+          if (!payDateInput.value) {
+            payDateInput.value = dateToISO(new Date());
+          }
+        }
+      };
+
+      payAddBtn.addEventListener("click", () => {
+        payFormEl.style.display = "block";
+        payTypeInput.value = "paycheck";
+        payAmountInput.value = "";
+        updatePayFormVisibility();
+      });
+
+      payTypeInput.addEventListener("change", updatePayFormVisibility);
+
+      payCancelBtn.addEventListener("click", () => {
+        payFormEl.style.display = "none";
+      });
+
+      paySaveBtn.addEventListener("click", () => {
+        const type = payTypeInput.value;
+        const amount = parseFloat(payAmountInput.value || "0");
+        if (isNaN(amount) || amount <= 0) {
+          alert("Enter a valid amount.");
+          return;
+        }
+        let dateIso = "";
+        if (type === "paycheck") {
+          dateIso = payDaySelect.value;
+          if (!dateIso) {
+            alert("Choose which payday this is for.");
+            return;
+          }
+        } else {
+          dateIso = payDateInput.value;
+          if (!dateIso) {
+            alert("Choose the date this income was received.");
+            return;
+          }
+        }
+        if (!appState.payEvents) appState.payEvents = [];
+        appState.payEvents.push({
+          id: createId("pay"),
+          type,
+          date: dateIso,
+          amount: Math.max(0, amount)
+        });
+        payFormEl.style.display = "none";
+        payAmountInput.value = "";
+        renderAll();
+      });
+    }
+
+    paycheckAmountInput.addEventListener("change", () => {
+      const val = parseFloat(paycheckAmountInput.value || "0");
+      appState.profile.typicalNet = isNaN(val) ? 0 : Math.max(0, val);
+      renderAll();
+    });
+
+    // ---------- Summary ----------
+    const summaryAvailableEl = document.getElementById("summaryAvailable");
+    const summaryAvailableSubEl = document.getElementById("summaryAvailableSub");
+    const summaryBillsEl = document.getElementById("summaryBills");
+    const summaryBillsSubEl = document.getElementById("summaryBillsSub");
+    const summaryEnvelopesEl = document.getElementById("summaryEnvelopes");
+    const summaryEnvelopesSubEl = document.getElementById("summaryEnvelopesSub");
+    const summaryAheadEl = document.getElementById("summaryAhead");
+    const summaryAheadSubEl = document.getElementById("summaryAheadSub");
+    const barAvailable = document.getElementById("barAvailable");
+    const barBills = document.getElementById("barBills");
+    const barEnvelopes = document.getElementById("barEnvelopes");
+    const barAhead = document.getElementById("barAhead");
+
+    function renderSummary() {
+      const currency = appState.profile.currency || "USD";
+
+      const paydays = getPaydaysAround(appState.profile.anchorPayDate, 2);
+      const today = startOfDay(new Date());
+      let nextPayday = null;
+      let prevPayday = null;
+
+      for (const p of paydays) {
+        if (p <= today && (!prevPayday || p > prevPayday)) prevPayday = p;
+        if (p >= today && !nextPayday) nextPayday = p;
+      }
+      if (!nextPayday && paydays.length) {
+        nextPayday = paydays[paydays.length - 1];
+      }
+
+      const cycleStart = prevPayday || today;
+      const cycleEnd = nextPayday || today;
+
+      const allocations = computeBillAllocations(paydays, 1);
+      let nextAlloc = 0;
+      if (nextPayday) {
+        const key = dateToISO(nextPayday);
+        if (allocations[key]) nextAlloc = allocations[key].amountTotal || 0;
+      }
+
+      let totalPay = 0;
+      let totalOther = 0;
+
+      if (appState.payEvents && appState.payEvents.length) {
+        for (const ev of appState.payEvents) {
+          if (!ev.date) continue;
+          const d = startOfDay(parseISODateLocal(ev.date));
+          if (d >= cycleStart && d <= cycleEnd) {
+            if (ev.type === "paycheck") totalPay += ev.amount || 0;
+            else totalOther += ev.amount || 0;
+          }
+        }
+      }
+
+      const incomingTotal = totalPay + totalOther;
+      const available = Math.max(0, incomingTotal - nextAlloc);
+
+      summaryAvailableEl.textContent = formatCurrency(available, currency);
+      if (incomingTotal > 0) {
+        if (totalOther > 0) {
+          summaryAvailableSubEl.textContent =
+            `With ${formatCurrency(totalPay, currency)} + ${formatCurrency(totalOther, currency)} other incoming`;
+        } else {
+          summaryAvailableSubEl.textContent =
+            `With ${formatCurrency(totalPay, currency)} incoming`;
+        }
+      } else {
+        summaryAvailableSubEl.textContent = "Add pay to see this update";
+      }
+
+      const totalBillsMonthly = appState.bills.reduce((sum, b) => sum + (b.amount || 0), 0);
+      const allocatedThisMonth = Object.values(allocations).reduce(
+        (sum, entry) => sum + (entry.amountTotal || 0),
+        0
+      );
+      const billsPct = totalBillsMonthly
+        ? clamp((allocatedThisMonth / totalBillsMonthly) * 100, 0, 9999)
+        : 0;
+
+      summaryBillsEl.textContent = `${billsPct.toFixed(0)}%`;
+      summaryBillsSubEl.textContent = totalBillsMonthly
+        ? `${formatCurrency(allocatedThisMonth, currency)} of ${formatCurrency(totalBillsMonthly, currency)}`
+        : "Add bills to see coverage";
+
+      const envelopesTotal = appState.categories.reduce(
+        (sum, c) => sum + (c.balance || 0),
+        0
+      );
+      summaryEnvelopesEl.textContent = formatCurrency(envelopesTotal, currency);
+      summaryEnvelopesSubEl.textContent =
+        appState.categories.length > 0
+          ? `${appState.categories.length} envelope${appState.categories.length !== 1 ? "s" : ""}`
+          : "No envelopes yet";
+
+      const aheadPct = totalBillsMonthly
+        ? clamp((envelopesTotal / totalBillsMonthly) * 100, 0, 9999)
+        : 0;
+      summaryAheadEl.textContent = `${aheadPct.toFixed(0)}%`;
+      summaryAheadSubEl.textContent = totalBillsMonthly
+        ? `${formatCurrency(envelopesTotal, currency)} vs monthly bills`
+        : "Add bills to measure a month ahead";
+
+      barAvailable.style.width = incomingTotal
+        ? clamp((available / (incomingTotal || 1)) * 100, 0, 100) + "%"
+        : "0%";
+      barBills.style.width = clamp(billsPct, 0, 100) + "%";
+      barEnvelopes.style.width = envelopesTotal && totalBillsMonthly
+        ? clamp((envelopesTotal / totalBillsMonthly) * 100, 0, 100) + "%"
+        : "0%";
+      barAhead.style.width = clamp(aheadPct, 0, 100) + "%";
+    }
+
+    // ---------- Snapshot Modal + Import/Export ----------
+    const importFileInput = document.getElementById("importFile");
+    const importBtn = document.getElementById("importBtn");
+    const exportBtn = document.getElementById("exportBtn");
+    const viewSnapshotBtn = document.getElementById("viewSnapshotBtn");
+    const snapshotModalBackdrop = document.getElementById("snapshotModalBackdrop");
+    const snapshotBodyEl = document.getElementById("snapshotBody");
+    const closeSnapshotBtn = document.getElementById("closeSnapshotBtn");
+    const downloadSnapshotBtn = document.getElementById("downloadSnapshotBtn");
+
+    importBtn.addEventListener("click", () => importFileInput.click());
+
+    importFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const json = JSON.parse(reader.result);
+          if (!json || typeof json !== "object" || json.version !== 1) {
+            alert("This snapshot doesn't look compatible (expected version 1).");
+            return;
+          }
+          appState = json;
+          // ensure minimal fields exist
+          if (!appState.profile) appState.profile = defaultState.profile;
+          if (!appState.profile.payOverrides) appState.profile.payOverrides = {};
+          if (!appState.bills) appState.bills = [];
+          if (!appState.categories) appState.categories = [];
+          if (!appState.payEvents) appState.payEvents = [];
+          // enforce fixed biweekly Friday schedule
+          appState.profile.payFrequency = "biweekly";
+          appState.profile.anchorPayDate = FIXED_ANCHOR_DATE;
+          // enforce fixed biweekly Friday schedule
+          appState.profile.payFrequency = "biweekly";
+          appState.profile.anchorPayDate = FIXED_ANCHOR_DATE;
+          renderAll();
+          alert("Snapshot imported successfully.");
+        } catch (err) {
+          console.error(err);
+          alert("Couldn't parse the file as JSON.");
+        } finally {
+          importFileInput.value = "";
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    exportBtn.addEventListener("click", () => {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `money_snapshot_${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    viewSnapshotBtn.addEventListener("click", () => {
+      renderSnapshotModal();
+      snapshotModalBackdrop.classList.add("show");
+    });
+
+    closeSnapshotBtn.addEventListener("click", () => {
+      snapshotModalBackdrop.classList.remove("show");
+    });
+
+    snapshotModalBackdrop.addEventListener("click", (e) => {
+      if (e.target === snapshotModalBackdrop) {
+        snapshotModalBackdrop.classList.remove("show");
+      }
+    });
+
+    downloadSnapshotBtn.addEventListener("click", () => {
+      exportBtn.click();
+    });
+
+    function renderSnapshotModal() {
+      const currency = appState.profile.currency || "USD";
+      const totalBillsMonthly = appState.bills.reduce((sum, b) => sum + (b.amount || 0), 0);
+      const envelopesTotal = appState.categories.reduce((sum, c) => sum + (c.balance || 0), 0);
+
+      const paydays = getPaydaysAround(appState.profile.anchorPayDate, 1);
+      const allocations = computeBillAllocations(paydays, 1);
+      let nextAlloc = 0;
+      if (paydays.length) {
+        const firstIso = dateToISO(paydays[0]);
+        if (allocations[firstIso]) nextAlloc = allocations[firstIso].amountTotal || 0;
+      }
+
+      const snapshotJson = JSON.stringify(appState, null, 2);
+
+      snapshotBodyEl.innerHTML = `
+        <div class="modal-section">
+          <div class="modal-section-title">Profile</div>
+          <div>
+            <span class="chip">Currency: ${currency}</span>
+            <span class="chip">Frequency: Biweekly</span>
+            <span class="chip">Anchor payday: ${appState.profile.anchorPayDate || "—"}</span>
+            <span class="chip">Net / paycheck: ${formatCurrency(appState.profile.typicalNet || 0, currency)}</span>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Bills & Coverage</div>
+          <div class="muted" style="margin-bottom:4px;">
+            Total monthly bills: <strong>${formatCurrency(totalBillsMonthly, currency)}</strong>
+          </div>
+          ${
+            appState.bills.length
+              ? `<ul style="margin:0; padding-left:16px; font-size:0.8rem;">
+                  ${appState.bills
+                    .map(
+                      b =>
+                        `<li>${b.name} — ${formatCurrency(b.amount, currency)} (due day ${b.dueDay || "?"})</li>`
+                    )
+                    .join("")}
+                </ul>`
+              : `<div class="muted">No bills defined yet.</div>`
+          }
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Envelopes</div>
+          <div class="muted" style="margin-bottom:4px;">
+            Total funded across categories: <strong>${formatCurrency(envelopesTotal, currency)}</strong>
+          </div>
+          ${
+            appState.categories.length
+              ? `<ul style="margin:0; padding-left:16px; font-size:0.8rem;">
+                  ${appState.categories
+                    .map(c => {
+                      const targetPart = c.target
+                        ? ` (target ${formatCurrency(c.target, currency)})`
+                        : "";
+                      return `<li>${c.name}: ${formatCurrency(c.balance, currency)}${targetPart}</li>`;
+                    })
+                    .join("")}
+                </ul>`
+              : `<div class="muted">No envelopes yet.</div>`
+          }
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Next Cycle</div>
+          <div class="muted">
+            ${
+              paydays.length
+                ? `Next payday: <strong>${paydays[0].toLocaleDateString()}</strong> — 
+                   planned bill allocations: <strong>${formatCurrency(nextAlloc, currency)}</strong>.`
+                : "Set your anchor payday to see upcoming cycles."
+            }
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Raw Snapshot (for import/export)</div>
+          <div class="code-block"><pre>${snapshotJson.replace(/</g, "&lt;")}</pre></div>
+        </div>
+      `;
+    }
+
+    // ---------- Navigation ----------
+    document.getElementById("prevMonthBtn").addEventListener("click", () => {
+      currentMonth.setMonth(currentMonth.getMonth() - 1);
+      renderCalendar();
+    });
+    document.getElementById("nextMonthBtn").addEventListener("click", () => {
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+      renderCalendar();
+    });
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      const now = new Date();
+      currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      selectedDay = now;
+      renderCalendar();
+    });
+
+    // ---------- Render all ----------
+    function renderAll() {
+      renderSummary();
+      renderCalendar();
+      renderBills();
+      renderCategories();
+      renderPaychecks();
+      renderPayEvents();
+    }
+
+    // Initial render
+    renderAll();
+  </script>
+</body>
+</html>
